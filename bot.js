@@ -26,26 +26,36 @@ class MyBot {
                 const { body } = await spotifyApi.searchPlaylists(description);
                 const playlist = body.playlists.items[0];
                 const { name, images, tracks: { total }, external_urls: { spotify } } = playlist;
-                const card = this.generateCard(name, `${total} tracks` , "Tracks: ", images[0].url, "Play on Spotify", spotify || 'https://google.com')
+
+                const data = await spotifyApi.getPlaylistTracks(playlist.id);
+
+                const card = this.generateCard(
+                    name, 
+                    `${total} tracks` , "Tracks: ", 
+                    images[0].url, 
+                    data.body.items.map(({track}) => ({
+                        title: track.name,
+                        url: track.external_urls.spotify
+                    })).slice(0, 5)
+                )
                 await turnContext.sendActivity({ attachments: [card] });
             } catch (e) {
                 console.error(e);
             }
-            // await turnContext.sendActivity(`You said '${ turnContext.activity.text }'`);
         } else {
             await turnContext.sendActivity(`[${ turnContext.activity.type } event detected]`);
         }
     }
 
-    generateCard(title, subtitle, bodyText, urlImage, buttonTitle, urlButton) {
+    generateCard(title, subtitle, bodyText, urlImage, buttons) {
         return CardFactory.thumbnailCard(
             title,
             [{ url: urlImage }],
-            [{
+            buttons.map(button => ({
                 type: 'openUrl',
-                title: buttonTitle,
-                value: urlButton
-            }],
+                title: button.title,
+                value: button.url
+            })),
             {
                 subtitle: subtitle,
                 text: bodyText
